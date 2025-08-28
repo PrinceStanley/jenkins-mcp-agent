@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-master
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: agent-master }
+  template:
+    metadata: { labels: { app: agent-master } }
+    spec:
+      serviceAccountName: agent-master-sa
+      volumes:
+        - name: workdir
+          persistentVolumeClaim: { claimName: agent-master-pvc }
+        - name: dockervar
+          emptyDir: {}
+      containers:
+        - name: agent-master
+          image: REPLACE_MASTER_IMAGE
+          ports: [{ containerPort: 8082 }]
+          env:
+            - name: AWS_REGION
+              value: "REPLACE_AWS_REGION"
+            - name: AWS_ACCOUNT_ID
+              value: "REPLACE_AWS_ACCOUNT_ID"
+            - name: NAMESPACE
+              value: "ai-agents"
+            - name: DOCKER_HOST
+              value: "tcp://localhost:2375"
+          volumeMounts:
+            - { name: workdir, mountPath: /workspace }
+        - name: dind
+          image: docker:24-dind
+          securityContext:
+            privileged: true
+          args: ["--host=tcp://0.0.0.0:2375","--storage-driver=overlay2"]
+          env:
+            - name: DOCKER_TLS_CERTDIR
+              value: ""
+          volumeMounts:
+            - { name: dockervar, mountPath: /var/lib/docker }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-master
+spec:
+  selector: { app: agent-master }
+  ports:
+    - name: http
+      port: 8082
+      targetPort: 8082
+  type: ClusterIP

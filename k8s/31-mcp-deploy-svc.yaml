@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mcp }
+  template:
+    metadata: { labels: { app: mcp } }
+    spec:
+      containers:
+        - name: mcp
+          image: REPLACE_MCP_IMAGE
+          ports: [{ containerPort: 8081 }]
+          env:
+            - name: AGENT_MASTER_URL
+              value: "http://agent-master:8082"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp
+spec:
+  selector: { app: mcp }
+  ports:
+    - port: 8081
+      targetPort: 8081
+  type: ClusterIP
